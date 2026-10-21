@@ -53,6 +53,7 @@ struct LANTransportConfigTests {
         #expect(LANTransportConfig.peerID(fromServiceName: "SomeOtherApp") == nil)
         #expect(LANTransportConfig.peerID(fromServiceName: "bitchat-") == nil)
         #expect(LANTransportConfig.peerID(fromServiceName: "bitchat-nothex") == nil)
+        #expect(LANTransportConfig.peerID(fromServiceName: "bitchat-" + String(repeating: "a", count: 64)) == nil)
         #expect(LANTransportConfig.peerID(fromServiceName: "") == nil)
     }
 

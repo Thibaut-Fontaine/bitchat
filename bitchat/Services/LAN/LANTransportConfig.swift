@@ -138,7 +138,7 @@ enum LANTransportConfig {
     static func peerID(fromServiceName name: String) -> PeerID? {
         guard name.hasPrefix(serviceNamePrefix) else { return nil }
         let bare = String(name.dropFirst(serviceNamePrefix.count))
-        guard !bare.isEmpty, bare.count <= 64, bare.allSatisfy({ $0.isHexDigit }) else {
+        guard bare.count == 16, bare.allSatisfy({ $0.isHexDigit }) else {
             return nil
         }
         return PeerID(str: bare.lowercased())
