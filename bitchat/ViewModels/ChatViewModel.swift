@@ -187,6 +187,9 @@ final class ChatViewModel: ObservableObject, BitchatDelegate, SynchronousMessage
             // Update mesh service nickname if it's initialized
             if !isPanicResetting, !meshService.myPeerID.isEmpty {
                 meshService.setNickname(nickname)
+                for transport in additionalTransports {
+                    transport.setNickname(nickname)
+                }
             }
         }
     }

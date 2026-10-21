@@ -124,10 +124,12 @@ final class LANTransport: Transport {
     // MARK: - Transport: identity
 
     var myPeerID: PeerID { localPeerID }
-    var myNickname: String { nickname }
+    var myNickname: String { queue.sync { nickname } }
 
     func setNickname(_ nickname: String) {
-        self.nickname = nickname
+        queue.async { [weak self] in
+            self?.nickname = nickname
+        }
     }
 
     // MARK: - Transport: lifecycle

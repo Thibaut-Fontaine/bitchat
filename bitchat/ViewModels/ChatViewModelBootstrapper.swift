@@ -205,6 +205,9 @@ private extension ChatViewModelBootstrapper {
         }
 
         viewModel.meshService.setNickname(viewModel.nickname)
+        for transport in viewModel.additionalTransports {
+            transport.setNickname(viewModel.nickname)
+        }
     }
 
     func startRuntimeServices() {
