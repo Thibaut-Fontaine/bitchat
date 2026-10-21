@@ -546,10 +546,10 @@ struct AppInfoView: View {
                         isOn: Binding(
                             get: { lanEnabled },
                             set: { newValue in
-                                lanEnabled = newValue
                                 LANTransportSettings().isEnabled = newValue
                                 lanTransport?.setEnabled(newValue)
-                                if newValue { lanPermission = .unknown }
+                                lanEnabled = lanTransport?.isEnabled ?? newValue
+                                if lanEnabled { lanPermission = .unknown }
                             }
                         )
                     )
