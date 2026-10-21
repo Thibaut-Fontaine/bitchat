@@ -172,7 +172,9 @@ final class LANTransport: Transport {
     /// the Noise service under the new identity.
     func invalidateAfterPanic() {
         settings.isEnabled = false
-        queue.async { [weak self] in
+        // Synchronous: the keychain wipe that follows must not race a live
+        // LAN link that still holds the old identity.
+        queue.sync { [weak self] in
             guard let self else { return }
             self.identityInvalidated = true
             self.stop()

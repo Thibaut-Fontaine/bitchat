@@ -84,9 +84,12 @@ final class ChatViewModelBootstrapper {
         bindFeatureObjectChanges()
         loadPersistedViewState()
         configureTransport()
+        // Install session callbacks before starting the transports: a LAN
+        // handshake can complete quickly on a local link, and an authentication
+        // callback installed after start would miss it.
+        configureNoiseCallbacks()
         startRuntimeServices()
         bindPeerService()
-        configureNoiseCallbacks()
         bindTransferProgress()
         configureGeoChannels()
         configureGateway()
