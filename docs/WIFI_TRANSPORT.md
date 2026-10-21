@@ -245,6 +245,10 @@ working and the Settings row shows the denial with an *open settings* and
 * A public (`message`) packet is accepted only after the Noise handshake and
   only after its Ed25519 signature verifies against the signing key from the
   authenticated hello. The LAN path does not trust an unsigned public frame.
+* Noise handshake frames are ignored until the signed hello arrived, and a
+  completed handshake is accepted only when its remote static key is the one
+  announced in that hello (and still derives the claimed peer ID). A service
+  that advertises somebody else's Bonjour name cannot hijack their identity.
 * A link accepts exactly one hello. A second hello, or a hello whose sender
   differs from the advertised Bonjour name, drops the link. When both peers
   connect at once, a deterministic rule keeps one crossed link (the outbound

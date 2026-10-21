@@ -44,6 +44,9 @@ final class LANTransport: Transport {
         var receivedHello = false
         var sentHandshake = false
         var isAuthenticated = false
+        /// Set before an intentional close so the cancellation callback does
+        /// not publish a second disconnect.
+        var isClosed = false
 
         init(connection: LANConnection, isOutbound: Bool) {
             self.connection = connection
@@ -552,12 +555,14 @@ final class LANTransport: Transport {
 
     private func teardownLinks() {
         for link in links.values {
+            link.isClosed = true
             link.connection.cancel()
         }
         links.removeAll()
     }
 
     private func handleLinkState(_ state: LANConnection.State, link: Link) {
+        guard !link.isClosed else { return }
         switch state {
         case .connecting:
             break
@@ -699,13 +704,19 @@ final class LANTransport: Transport {
             registry.disconnect(peerID: peerID, now: Date())
             deliverEvent(.peerDisconnected(peerID))
         }
+        link.isClosed = true
         link.connection.cancel()
         links.removeValue(forKey: ObjectIdentifier(link.connection))
         publishPeerSnapshots()
     }
 
     private func handleHandshake(_ packet: BitchatPacket, link: Link) {
-        guard let peerID = link.peerID, packetMatchesLink(packet, peerID: peerID) else { return }
+        // The signed hello must arrive first. Without this guard a peer that
+        // advertises somebody else's Bonjour name could start a Noise session
+        // before proving the advertised identity.
+        guard link.receivedHello,
+              let peerID = link.peerID,
+              packetMatchesLink(packet, peerID: peerID) else { return }
         registry.beginHandshake(peerID: peerID, now: Date())
         do {
             let result = try noiseService.processHandshakeMessageWithResult(
@@ -727,7 +738,10 @@ final class LANTransport: Transport {
     }
 
     private func handleEncrypted(_ packet: BitchatPacket, link: Link) {
-        guard let peerID = link.peerID, link.isAuthenticated, packetMatchesLink(packet, peerID: peerID) else { return }
+        guard link.receivedHello,
+              let peerID = link.peerID,
+              link.isAuthenticated,
+              packetMatchesLink(packet, peerID: peerID) else { return }
         registry.markTraffic(peerID: peerID, now: Date())
         do {
             let plaintext = try noiseService.decrypt(packet.payload, from: peerID)
@@ -749,7 +763,7 @@ final class LANTransport: Transport {
         let senderID = PeerID(hexData: packet.senderID)
         guard link.isAuthenticated,
               let signingKey = link.signingPublicKey,
-              senderID == link.peerID,
+              link.peerID == senderID,
               packetMatchesLink(packet, peerID: senderID),
               noiseService.verifyPacketSignature(packet, publicKey: signingKey) else {
             SecureLogger.warning("LAN transport: unsigned or unauthenticated public message dropped", category: .security)
@@ -862,12 +876,26 @@ final class LANTransport: Transport {
     // MARK: - Authentication bookkeeping
 
     private func finishAuthentication(peerID: PeerID, link: Link) {
+        // Bind the completed Noise session to the identity announced in the
+        // signed hello. The handshake itself proves possession of the remote
+        // static key; this check makes sure it is the key the peer claimed.
+        guard let remoteKey = noiseService.getPeerPublicKeyData(peerID),
+              let announcedKey = registry.peers[peerID]?.noisePublicKey,
+              remoteKey == announcedKey,
+              PeerID(publicKey: remoteKey) == peerID else {
+            SecureLogger.error(
+                "LAN transport: Noise session does not match the announced identity; dropping link",
+                category: .security
+            )
+            dropLink(link, notify: false)
+            return
+        }
         let wasAuthenticated = link.isAuthenticated
         link.isAuthenticated = true
         registry.authenticate(
             peerID: peerID,
             nickname: nicknameForPeer(peerID),
-            noisePublicKey: noiseService.getPeerPublicKeyData(peerID),
+            noisePublicKey: remoteKey,
             signingPublicKey: link.signingPublicKey,
             isVerified: true,
             now: Date()
@@ -926,6 +954,7 @@ final class LANTransport: Transport {
             return gaveUp || peerExpired ? identifier : nil
         }
         for identifier in staleIdentifiers {
+            links[identifier]?.isClosed = true
             links[identifier]?.connection.cancel()
             links.removeValue(forKey: identifier)
         }
