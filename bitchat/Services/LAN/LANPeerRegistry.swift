@@ -172,17 +172,19 @@ final class LANPeerRegistry {
             // connection that skipped the discovery step) is registered on
             // the fly so the state machine stays complete.
             guard peers.count < timeouts.capacity else { return nil }
-            peer = LANPeer(
+            let created = LANPeer(
                 peerID: peerID,
                 nickname: nickname ?? "",
-                state: .discovered,
+                state: .authenticated,
                 noisePublicKey: noisePublicKey,
                 signingPublicKey: signingPublicKey,
                 endpointDescription: nil,
                 lastSeen: now,
                 stateChangedAt: now,
-                isVerified: false
+                isVerified: isVerified
             )
+            peers[peerID] = created
+            return created
         }
         if let nickname, !nickname.isEmpty { peer.nickname = nickname }
         if let noisePublicKey { peer.noisePublicKey = noisePublicKey }

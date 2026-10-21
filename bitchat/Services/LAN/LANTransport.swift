@@ -888,7 +888,8 @@ final class LANTransport: Transport {
         // registry only knows peers that reached hello; this closes the
         // unauthenticated socket so a local attacker cannot hold slots.
         let expiredPeerIDs = Set(expired)
-        let staleIdentifiers = links.compactMap { (identifier, link) -> ObjectIdentifier? in
+        let staleIdentifiers = links.compactMap { pair -> ObjectIdentifier? in
+            let (identifier, link) = pair
             let age = now.timeIntervalSince(link.createdAt)
             let gaveUp = link.isAuthenticated
                 ? false
