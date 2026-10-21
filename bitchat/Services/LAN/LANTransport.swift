@@ -859,7 +859,8 @@ final class LANTransport: Transport {
                 signature: nil,
                 ttl: 1
             )
-            guard let link = links.values.first(where: { $0.peerID == peerID }) else { return false }
+            guard let link = links.values.first(where: { $0.peerID == peerID }),
+                  link.connection.state == .ready else { return false }
             link.connection.send(payload: packet.toBinaryData(padding: false) ?? Data())
             return true
         } catch {
@@ -956,8 +957,10 @@ final class LANTransport: Transport {
             return gaveUp || peerExpired ? identifier : nil
         }
         for identifier in staleIdentifiers {
-            links[identifier]?.isClosed = true
-            links[identifier]?.connection.cancel()
+            if let link = links[identifier] {
+                link.isClosed = true
+                link.connection.cancel()
+            }
             links.removeValue(forKey: identifier)
         }
     }

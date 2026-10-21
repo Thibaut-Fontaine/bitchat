@@ -644,17 +644,23 @@ struct AppInfoView: View {
                 .foregroundColor(palette.alertRed)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 12) {
-                Button(Strings.Settings.lanOpenSettings, action: SystemSettings.localNetwork.open)
-                    .buttonStyle(.plain)
-                    .bitchatFont(size: 12)
-                    .foregroundColor(palette.accent)
-                Button(Strings.Settings.lanRetry) {
-                    lanPermission = .unknown
-                    lanTransport?.retryPermission()
+                Button {
+                    SystemSettings.localNetwork.open()
+                } label: {
+                    Text(verbatim: Strings.Settings.lanOpenSettings)
+                        .bitchatFont(size: 12)
+                        .foregroundColor(palette.accent)
                 }
                 .buttonStyle(.plain)
-                .bitchatFont(size: 12)
-                .foregroundColor(palette.accent)
+                Button {
+                    lanPermission = .unknown
+                    lanTransport?.retryPermission()
+                } label: {
+                    Text(verbatim: Strings.Settings.lanRetry)
+                        .bitchatFont(size: 12)
+                        .foregroundColor(palette.accent)
+                }
+                .buttonStyle(.plain)
             }
         }
     }
