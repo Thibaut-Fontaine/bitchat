@@ -831,9 +831,16 @@ final class LANTransport: Transport {
         link.connection.send(payload: packet.toBinaryData(padding: false) ?? Data())
     }
 
+    private func requestHandshake(_ peerID: PeerID) {
+        let handler = handshakeRequiredHandler
+        Task { @MainActor in
+            handler?(peerID)
+        }
+    }
+
     private func startHandshake(with peerID: PeerID) {
         guard let link = links.values.first(where: { $0.peerID == peerID }) else {
-            handshakeRequiredHandler?(peerID)
+            requestHandshake(peerID)
             return
         }
         guard !link.sentHandshake else { return }
@@ -848,7 +855,7 @@ final class LANTransport: Transport {
     @discardableResult
     private func sendNoisePayload(_ payload: Data, to peerID: PeerID) -> Bool {
         guard noiseService.hasEstablishedSession(with: peerID) else {
-            handshakeRequiredHandler?(peerID)
+            requestHandshake(peerID)
             startHandshake(with: peerID)
             return false
         }
