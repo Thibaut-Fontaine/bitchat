@@ -38,7 +38,7 @@ final class LANConnection {
     /// Called when the link state changes.
     var onStateChange: ((State) -> Void)?
 
-    var state: State { currentState }
+    var state: State { queue.sync { currentState } }
 
     /// Create a link to a remote endpoint.
     init(
