@@ -175,7 +175,7 @@
       "status": "blocked",
       "started_at": "2026-10-21T12:10:13.303904809Z",
       "actual_secs": 0,
-      "note": "docs, settings UI, hardening and the clean upstream PR are complete; the macOS CI job cannot start because the GitHub account is locked due to a billing issue (annotation from the fork run), and no signed iOS build is possible without Xcode/Apple signing on this Linux workstation; both are recorded in STATUS.md and CHECKS.md"
+      "note": "docs, settings UI, hardening and the clean upstream PR #1784 are complete; the macOS CI job cannot start because the GitHub account is locked due to a billing issue, and no signed iOS build is possible without Xcode/Apple signing on this Linux workstation; 43 pure LAN tests pass locally; both blockers are recorded in STATUS.md and CHECKS.md"
     }
   ],
   "events": [
@@ -400,6 +400,12 @@
       "milestone": "m5",
       "kind": "blocked",
       "note": "docs, settings UI, hardening and the clean upstream PR are complete; the macOS CI job cannot start because the GitHub account is locked due to a billing issue (annotation from the fork run), and no signed iOS build is possible without Xcode/Apple signing on this Linux workstation; both are recorded in STATUS.md and CHECKS.md"
+    },
+    {
+      "at": "2026-10-21T16:22:20.693570393Z",
+      "milestone": "m5",
+      "kind": "blocked",
+      "note": "docs, settings UI, hardening and the clean upstream PR #1784 are complete; the macOS CI job cannot start because the GitHub account is locked due to a billing issue, and no signed iOS build is possible without Xcode/Apple signing on this Linux workstation; 43 pure LAN tests pass locally; both blockers are recorded in STATUS.md and CHECKS.md"
     }
   ],
   "prior_factor": 1.0
