@@ -41,6 +41,10 @@ struct LANPeer: Equatable, Identifiable, Sendable {
     /// completed. This is the same key the BLE mesh uses, so the peer keeps
     /// one identity (and one fingerprint) across transports.
     var noisePublicKey: Data?
+    /// Ed25519 key that signs this peer's packets, learned from its hello.
+    /// Used to authenticate public LAN messages independently of the TCP
+    /// link they arrived on.
+    var signingPublicKey: Data?
     /// Human readable description of the remote endpoint (for logs).
     var endpointDescription: String?
     /// Last time we heard anything from this peer.
@@ -99,12 +103,14 @@ final class LANPeerRegistry {
         peerID: PeerID,
         nickname: String? = nil,
         noisePublicKey: Data? = nil,
+        signingPublicKey: Data? = nil,
         endpointDescription: String? = nil,
         now: Date
     ) -> LANPeer? {
         if var existing = peers[peerID] {
             if let nickname, !nickname.isEmpty { existing.nickname = nickname }
             if let noisePublicKey { existing.noisePublicKey = noisePublicKey }
+            if let signingPublicKey { existing.signingPublicKey = signingPublicKey }
             if let endpointDescription { existing.endpointDescription = endpointDescription }
             existing.lastSeen = now
             if existing.state == .disconnected || existing.state == .timedOut {
@@ -122,6 +128,7 @@ final class LANPeerRegistry {
             nickname: nickname ?? "",
             state: .discovered,
             noisePublicKey: noisePublicKey,
+            signingPublicKey: signingPublicKey,
             endpointDescription: endpointDescription,
             lastSeen: now,
             stateChangedAt: now,
@@ -156,6 +163,7 @@ final class LANPeerRegistry {
         peerID: PeerID,
         nickname: String? = nil,
         noisePublicKey: Data? = nil,
+        signingPublicKey: Data? = nil,
         isVerified: Bool = false,
         now: Date
     ) -> LANPeer? {
@@ -169,6 +177,7 @@ final class LANPeerRegistry {
                 nickname: nickname ?? "",
                 state: .discovered,
                 noisePublicKey: noisePublicKey,
+                signingPublicKey: signingPublicKey,
                 endpointDescription: nil,
                 lastSeen: now,
                 stateChangedAt: now,
@@ -177,6 +186,7 @@ final class LANPeerRegistry {
         }
         if let nickname, !nickname.isEmpty { peer.nickname = nickname }
         if let noisePublicKey { peer.noisePublicKey = noisePublicKey }
+        if let signingPublicKey { peer.signingPublicKey = signingPublicKey }
         peer.isVerified = peer.isVerified || isVerified
         peer.state = .authenticated
         peer.stateChangedAt = now

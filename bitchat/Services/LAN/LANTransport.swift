@@ -36,6 +36,10 @@ final class LANTransport: Transport {
         var peerID: PeerID?
         /// `true` when we opened the connection (we send the first frame).
         let isOutbound: Bool
+        /// Ed25519 key learned from the signed hello.
+        var signingPublicKey: Data?
+        /// Creation time, used to expire links that never complete a hello.
+        let createdAt = Date()
         var sentHello = false
         var receivedHello = false
         var sentHandshake = false
@@ -60,6 +64,11 @@ final class LANTransport: Transport {
 
     /// The transport's feature flag. When `false` the transport stays inert.
     var isEnabled: Bool { settings.isEnabled }
+
+    /// The latest permission state, safe to read from the UI thread.
+    var currentPermissionState: LANPermissionState {
+        queue.sync { permissionState }
+    }
 
     // MARK: - Delegates
 
@@ -128,6 +137,33 @@ final class LANTransport: Transport {
         }
     }
 
+    /// Apply the settings toggle immediately instead of waiting for the next
+    /// launch. Disabling tears every link down; enabling starts discovery and
+    /// triggers the Local Network prompt on first use.
+    func setEnabled(_ enabled: Bool) {
+        settings.isEnabled = enabled
+        queue.async { [weak self] in
+            guard let self else { return }
+            if enabled {
+                self.startIfAllowed()
+            } else {
+                self.stop()
+            }
+        }
+    }
+
+    /// Clear a denied/unavailable in-memory state and try again. The system
+    /// permission itself can only be changed in Settings; this lets a user
+    /// retry after returning from there, or after turning Wi-Fi back on.
+    func retryPermission() {
+        queue.async { [weak self] in
+            guard let self else { return }
+            self.stop()
+            self.updatePermissionState(.unknown)
+            self.startIfAllowed()
+        }
+    }
+
     func emergencyDisconnectAll() {
         queue.async { [weak self] in
             self?.teardownLinks()
@@ -144,12 +180,12 @@ final class LANTransport: Transport {
             return
         }
         guard !isRunning else { return }
-        guard permissionState.allowsLocalNetworkAccess else {
-            // The permission is requested implicitly by the system the first
-            // time the app browses or advertises Bonjour. Until the user
-            // granted it, the transport stays inert.
+        guard permissionState.canAttemptStart else {
+            // A known denial keeps the transport inert. `unknown` is allowed:
+            // the first Bonjour browse/advertise is what triggers the system
+            // permission prompt.
             SecureLogger.debug(
-                "LAN transport waiting for local-network permission (state: \(permissionState.rawValue))",
+                "LAN transport not starting (permission: \(permissionState.rawValue))",
                 category: .session
             )
             return
@@ -303,8 +339,9 @@ final class LANTransport: Transport {
                 SecureLogger.error("LAN transport: failed to encode private message", category: .session)
                 return
             }
-            self.sendNoisePayload(payload, to: peerID)
-            self.deliverEvent(.messageDeliveryStatusUpdated(messageID: messageID, status: .sent))
+            if self.sendNoisePayload(payload, to: peerID) {
+                self.deliverEvent(.messageDeliveryStatusUpdated(messageID: messageID, status: .sent))
+            }
         }
     }
 
@@ -435,6 +472,10 @@ final class LANTransport: Transport {
     // MARK: - Links
 
     private func connect(to endpoint: NWEndpoint, peerID: PeerID) {
+        guard links.count < LANTransportConfig.maxConcurrentConnections else {
+            SecureLogger.warning("LAN transport: connection cap reached; not dialing", category: .session)
+            return
+        }
         let connection = LANConnection(endpoint: endpoint, queue: linkQueue)
         let link = Link(connection: connection, isOutbound: true)
         link.peerID = peerID
@@ -458,6 +499,11 @@ final class LANTransport: Transport {
     }
 
     private func accept(connection: NWConnection) {
+        guard links.count < LANTransportConfig.maxConcurrentConnections else {
+            SecureLogger.warning("LAN transport: connection cap reached; rejecting", category: .session)
+            connection.cancel()
+            return
+        }
         let lanConnection = LANConnection(connection: connection, queue: linkQueue)
         let link = Link(connection: lanConnection, isOutbound: false)
         register(link: link)
@@ -505,6 +551,22 @@ final class LANTransport: Transport {
 
     // MARK: - Frames
 
+    /// A packet received on a link must claim the identity that link was
+    /// authenticated as, and must be addressed to us when it carries a
+    /// recipient. Without this check a peer could inject a packet under a
+    /// different sender ID on its own TCP link.
+    private func packetMatchesLink(_ packet: BitchatPacket, peerID: PeerID) -> Bool {
+        guard LANInboundPolicy.senderMatches(packet, peerID: peerID) else {
+            SecureLogger.warning("LAN transport: sender ID does not match the link", category: .security)
+            return false
+        }
+        guard LANInboundPolicy.recipientMatches(packet, localPeerID: localPeerID) else {
+            SecureLogger.warning("LAN transport: packet addressed to another peer dropped", category: .security)
+            return false
+        }
+        return true
+    }
+
     private func handleFrame(_ payload: Data, from link: Link) {
         guard let packet = BitchatPacket.from(payload) else {
             SecureLogger.warning("LAN transport: malformed packet dropped", category: .session)
@@ -527,6 +589,13 @@ final class LANTransport: Transport {
     /// The identity exchange: an announce packet carrying the peer's Noise
     /// and signing keys, signed with the peer's Ed25519 key.
     private func handleHello(_ packet: BitchatPacket, link: Link) {
+        // A link gets exactly one identity. A second hello is an attempt to
+        // re-bind an established connection to somebody else.
+        guard !link.receivedHello else {
+            SecureLogger.warning("LAN transport: duplicate hello dropped", category: .security)
+            dropLink(link, notify: false)
+            return
+        }
         let senderID = PeerID(hexData: packet.senderID)
         guard let announcement = AnnouncementPacket.decode(from: packet.payload) else {
             SecureLogger.warning("LAN transport: malformed hello dropped", category: .session)
@@ -538,6 +607,14 @@ final class LANTransport: Transport {
             SecureLogger.warning("LAN transport: hello identity mismatch dropped", category: .security)
             return
         }
+        // The Bonjour name is only a routing hint, but a mismatch means the
+        // service is lying (or stale); do not let it create a second identity.
+        if let advertised = link.peerID, advertised != senderID {
+            SecureLogger.warning("LAN transport: hello does not match advertised peer; dropping", category: .security)
+            registry.remove(peerID: advertised)
+            dropLink(link, notify: false)
+            return
+        }
         // The hello is signed with the peer's Ed25519 key; an unsigned or
         // forged hello never reaches the Noise handshake.
         guard noiseService.verifyPacketSignature(packet, publicKey: announcement.signingPublicKey) else {
@@ -545,12 +622,25 @@ final class LANTransport: Transport {
             return
         }
 
+        // Crossed outbound connections are common when both sides browse at
+        // once. Keep exactly one link: the outbound link of the smaller peer
+        // ID, otherwise the older link. Both sides compute the same winner.
+        if let existing = links.values.first(where: { $0 !== link && $0.peerID == senderID }) {
+            if shouldKeep(existing: existing, incoming: link, peerID: senderID) {
+                dropLink(link, notify: false)
+                return
+            }
+            dropLink(existing, notify: existing.isAuthenticated)
+        }
+
         link.receivedHello = true
         link.peerID = senderID
+        link.signingPublicKey = announcement.signingPublicKey
         registry.discover(
             peerID: senderID,
             nickname: announcement.nickname,
             noisePublicKey: announcement.noisePublicKey,
+            signingPublicKey: announcement.signingPublicKey,
             now: Date()
         )
         registry.beginHandshake(peerID: senderID, now: Date())
@@ -567,8 +657,26 @@ final class LANTransport: Transport {
         publishPeerSnapshots()
     }
 
+    private func shouldKeep(existing: Link, incoming: Link, peerID: PeerID) -> Bool {
+        if existing.isOutbound != incoming.isOutbound {
+            let preferOutbound = localPeerID.id < peerID.id
+            return existing.isOutbound == preferOutbound
+        }
+        return existing.createdAt <= incoming.createdAt
+    }
+
+    private func dropLink(_ link: Link, notify: Bool) {
+        if notify, let peerID = link.peerID {
+            registry.disconnect(peerID: peerID, now: Date())
+            deliverEvent(.peerDisconnected(peerID))
+        }
+        link.connection.cancel()
+        links.removeValue(forKey: ObjectIdentifier(link.connection))
+        publishPeerSnapshots()
+    }
+
     private func handleHandshake(_ packet: BitchatPacket, link: Link) {
-        guard let peerID = link.peerID else { return }
+        guard let peerID = link.peerID, packetMatchesLink(packet, peerID: peerID) else { return }
         registry.beginHandshake(peerID: peerID, now: Date())
         do {
             let result = try noiseService.processHandshakeMessageWithResult(
@@ -590,7 +698,7 @@ final class LANTransport: Transport {
     }
 
     private func handleEncrypted(_ packet: BitchatPacket, link: Link) {
-        guard let peerID = link.peerID else { return }
+        guard let peerID = link.peerID, link.isAuthenticated, packetMatchesLink(packet, peerID: peerID) else { return }
         registry.markTraffic(peerID: peerID, now: Date())
         do {
             let plaintext = try noiseService.decrypt(packet.payload, from: peerID)
@@ -610,6 +718,14 @@ final class LANTransport: Transport {
 
     private func handlePublicMessage(_ packet: BitchatPacket, link: Link) {
         let senderID = PeerID(hexData: packet.senderID)
+        guard link.isAuthenticated,
+              let signingKey = link.signingPublicKey,
+              senderID == link.peerID,
+              packetMatchesLink(packet, peerID: senderID),
+              noiseService.verifyPacketSignature(packet, publicKey: signingKey) else {
+            SecureLogger.warning("LAN transport: unsigned or unauthenticated public message dropped", category: .security)
+            return
+        }
         guard senderID != localPeerID else { return }
         registry.markTraffic(peerID: senderID, now: Date())
         let content = String(data: packet.payload, encoding: .utf8) ?? ""
@@ -680,11 +796,12 @@ final class LANTransport: Transport {
         }
     }
 
-    private func sendNoisePayload(_ payload: Data, to peerID: PeerID) {
+    @discardableResult
+    private func sendNoisePayload(_ payload: Data, to peerID: PeerID) -> Bool {
         guard noiseService.hasEstablishedSession(with: peerID) else {
             handshakeRequiredHandler?(peerID)
             startHandshake(with: peerID)
-            return
+            return false
         }
         do {
             let encrypted = try noiseService.encrypt(payload, for: peerID)
@@ -697,10 +814,12 @@ final class LANTransport: Transport {
                 signature: nil,
                 ttl: 1
             )
-            guard let link = links.values.first(where: { $0.peerID == peerID }) else { return }
+            guard let link = links.values.first(where: { $0.peerID == peerID }) else { return false }
             link.connection.send(payload: packet.toBinaryData(padding: false) ?? Data())
+            return true
         } catch {
             SecureLogger.error("LAN transport: encrypt failed: \(error)", category: .security)
+            return false
         }
     }
 
@@ -720,6 +839,7 @@ final class LANTransport: Transport {
             peerID: peerID,
             nickname: nicknameForPeer(peerID),
             noisePublicKey: noiseService.getPeerPublicKeyData(peerID),
+            signingPublicKey: link.signingPublicKey,
             isVerified: true,
             now: Date()
         )
@@ -751,12 +871,33 @@ final class LANTransport: Transport {
     }
 
     private func runMaintenance() {
-        let expired = registry.expireStalePeers(now: Date())
+        let now = Date()
+        let expired = registry.expireStalePeers(now: now)
         for peerID in expired {
             deliverEvent(.peerDisconnected(peerID))
         }
         if !expired.isEmpty {
             publishPeerSnapshots()
+        }
+
+        // A TCP connection that never completes a hello, or a hello that
+        // never completes Noise, must not stay open forever. The peer
+        // registry only knows peers that reached hello; this closes the
+        // unauthenticated socket so a local attacker cannot hold slots.
+        let expiredPeerIDs = Set(expired)
+        let staleIdentifiers = links.compactMap { (identifier, link) -> ObjectIdentifier? in
+            let age = now.timeIntervalSince(link.createdAt)
+            let gaveUp = link.isAuthenticated
+                ? false
+                : (!link.receivedHello
+                    ? age > LANTransportConfig.discoveryTimeout
+                    : age > LANTransportConfig.discoveryTimeout + LANTransportConfig.handshakeTimeout)
+            let peerExpired = link.peerID.map { expiredPeerIDs.contains($0) } ?? false
+            return gaveUp || peerExpired ? identifier : nil
+        }
+        for identifier in staleIdentifiers {
+            links[identifier]?.connection.cancel()
+            links.removeValue(forKey: identifier)
         }
     }
 
@@ -774,6 +915,13 @@ final class LANTransport: Transport {
             "LAN transport: local-network permission state -> \(state.rawValue)",
             category: .session
         )
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .lanPermissionStateDidChange,
+                object: nil,
+                userInfo: ["state": state.rawValue]
+            )
+        }
     }
 
     private func publishPeerSnapshots() {

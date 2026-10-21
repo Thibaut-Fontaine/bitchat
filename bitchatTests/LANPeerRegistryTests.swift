@@ -173,6 +173,23 @@ struct LANPeerRegistryTests {
         #expect(registry.peers.count == 2)
     }
 
+    @Test("The hello signing key is retained for public-message verification")
+    func signingKeyIsRetained() {
+        let registry = makeRegistry()
+        let peerID = makePeerID("b")
+        let start = Date(timeIntervalSince1970: 11_000)
+        let signingKey = Data(repeating: 0x22, count: 32)
+
+        _ = registry.discover(peerID: peerID, now: start)
+        _ = registry.authenticate(
+            peerID: peerID,
+            signingPublicKey: signingKey,
+            now: start
+        )
+
+        #expect(registry.peers[peerID]?.signingPublicKey == signingKey)
+    }
+
     @Test("Timed out peers disappear from the published snapshots")
     func timedOutPeersAreNotPublished() {
         let registry = makeRegistry()

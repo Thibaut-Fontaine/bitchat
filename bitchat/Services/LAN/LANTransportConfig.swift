@@ -34,6 +34,15 @@ enum LANPermissionState: String, Equatable, Codable, Sendable {
     var allowsLocalNetworkAccess: Bool {
         self == .granted
     }
+
+    /// Whether the transport may attempt to start.
+    ///
+    /// `unknown` is allowed on purpose: the first Bonjour browse/advertise is
+    /// what triggers the system permission prompt. Only a known refusal keeps
+    /// the transport inert.
+    var canAttemptStart: Bool {
+        self == .unknown || self == .granted
+    }
 }
 
 /// Why a local-network operation failed.
@@ -85,6 +94,12 @@ enum LANTransportConfig {
     /// mesh peer ID, so a peer keeps one identity across transports.
     static let serviceNamePrefix = "bitchat-"
 
+    /// Maximum number of simultaneously open LAN connections.
+    ///
+    /// This bounds unauthenticated connections that have not completed a
+    /// hello yet; the peer registry separately caps authenticated peers.
+    static let maxConcurrentConnections = 64
+
     /// Maximum number of concurrent LAN peers tracked in the peer registry.
     /// The peer table is small by construction (a phone sees a handful of
     /// peers on one Wi-Fi network), the cap only bounds memory.
@@ -128,6 +143,12 @@ enum LANTransportConfig {
         }
         return PeerID(str: bare.lowercased())
     }
+}
+
+extension Notification.Name {
+    /// Posted when the observed local-network permission state changes.
+    /// `userInfo["state"]` carries the `LANPermissionState.rawValue`.
+    static let lanPermissionStateDidChange = Notification.Name("bitchat.lan.permissionStateDidChange")
 }
 
 /// Persisted feature-flag state for the Wi-Fi LAN transport.

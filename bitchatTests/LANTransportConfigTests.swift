@@ -81,4 +81,17 @@ struct LANTransportConfigTests {
         #expect(!LANPermissionState.unknown.allowsLocalNetworkAccess)
         #expect(!LANPermissionState.unavailable.allowsLocalNetworkAccess)
     }
+
+    @Test("The first enable may start Bonjour to trigger the permission prompt")
+    func permissionCanAttemptStart() {
+        #expect(LANPermissionState.unknown.canAttemptStart)
+        #expect(LANPermissionState.granted.canAttemptStart)
+        #expect(!LANPermissionState.denied.canAttemptStart)
+        #expect(!LANPermissionState.unavailable.canAttemptStart)
+    }
+
+    @Test("The connection table has a positive hard cap")
+    func connectionCap() {
+        #expect(LANTransportConfig.maxConcurrentConnections > 0)
+    }
 }
