@@ -190,6 +190,18 @@ struct LANPeerRegistryTests {
         #expect(registry.peers[peerID]?.signingPublicKey == signingKey)
     }
 
+    @Test("Stopping the transport clears every peer snapshot")
+    func removeAll() {
+        let registry = makeRegistry()
+        let start = Date(timeIntervalSince1970: 12_000)
+        _ = registry.discover(peerID: makePeerID("c"), now: start)
+        _ = registry.authenticate(peerID: makePeerID("c"), now: start)
+
+        registry.removeAll()
+        #expect(registry.peers.isEmpty)
+        #expect(registry.snapshots(now: start).isEmpty)
+    }
+
     @Test("Timed out peers disappear from the published snapshots")
     func timedOutPeersAreNotPublished() {
         let registry = makeRegistry()
