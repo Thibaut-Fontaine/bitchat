@@ -203,7 +203,7 @@ final class UnifiedPeerService: ObservableObject, TransportPeerEventsDelegate {
         }
         return Array(merged.values)
     }
-    
+
     private static func merge(
         existing: TransportPeerSnapshot,
         incoming: TransportPeerSnapshot
@@ -223,7 +223,7 @@ final class UnifiedPeerService: ObservableObject, TransportPeerEventsDelegate {
         }
         return existing.lastSeen >= incoming.lastSeen ? existing : incoming
     }
-    
+
     private func buildPeerFromMesh(
         peerInfo: TransportPeerSnapshot,
         favorites: [Data: FavoritesPersistenceService.FavoriteRelationship],
