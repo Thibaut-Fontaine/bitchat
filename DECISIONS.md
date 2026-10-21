@@ -23,9 +23,10 @@ cipher belongs to exactly one physical link. Sharing the BLE instance would
 have mixed two links' cipher state under one peer ID.
 
 Consequence: a panic wipe (which rotates the keychain identity) leaves the
-LAN transport with a stale in-memory identity. v1 therefore does not run the
-LAN transport across a panic reset; this is documented in
-`docs/WIFI_TRANSPORT.md` ("Security limits") and is a known follow-up.
+LAN transport with a stale in-memory identity. The panic path now stops and
+quarantines the transport before the keychain wipe and refuses to start it
+again in the same session; a fresh launch rebuilds it under the new identity.
+This is documented in `docs/WIFI_TRANSPORT.md` ("Security limits").
 
 ## D3 — The transport is always constructed, but inert while the flag is off
 
@@ -68,16 +69,19 @@ sub-todos, so the board was rewritten in the same schema (version 1) before
 the work started; all progress afterwards was recorded with
 `mox milestone …`, never by hand.
 
-## D7 — No test could be executed locally
+## D7 — Pure logic tests run locally; the Apple build does not
 
-This workstation is Linux and the VPS is Linux: there is no Swift
-toolchain, no Xcode and no Apple simulator, and installing them is out of
-scope. The **only** executable check is the macOS CI
-(`.github/workflows/swift-tests.yml`), which runs `swift build
---build-tests`, the unit tests, the iOS simulator test job, SwiftLint and
-the universal Release builds.
+This workstation is Linux and the VPS is Linux: there is no Xcode and no
+Apple simulator. A Swift 6.1 Linux toolchain was unpacked under `/tmp` (not
+installed system-wide), and the pure core (`LANFrameCodec`,
+`LANPeerRegistry`, `LANTransportSelector`, `LANTransportConfig`,
+`LANInboundPolicy`) was compiled with small `BitFoundation` stubs. **43
+tests pass.** That harness also found two real compile errors in the
+uncompiled branch: the on-the-fly `authenticate` path and a stray `context`
+reference in the lifecycle extension.
 
-Consequence for the TDD cycle: the "failing test" step was verified by
-construction (the test commits reference symbols that the next commit
-introduces) and by the CI run on the feature branch, not by a local red
-run. This is recorded here as required by the project rules.
+The macOS CI remains the only check of UIKit/Network.framework, the app
+targets and SwiftLint. Its fork run could not start because the GitHub
+account is locked for billing; no paid plan or spending change was made.
+The clean upstream PR is the place to get that run once a maintainer
+approves it.
