@@ -316,6 +316,9 @@ final class ChatViewModel: ObservableObject, BitchatDelegate, SynchronousMessage
     // MARK: - Services and Storage
 
     let meshService: Transport
+    /// Transports that run next to the BLE mesh (for example the Wi-Fi LAN
+    /// transport). They share the unified peer list and the message router.
+    let additionalTransports: [Transport]
     let idBridge: NostrIdentityBridge
     let identityManager: SecureIdentityStateManagerProtocol
     /// Single source of truth for conversation message state and selection
@@ -1198,6 +1201,7 @@ final class ChatViewModel: ObservableObject, BitchatDelegate, SynchronousMessage
         self.locationPresenceStore = locationPresenceStore
         self.locationManager = locationManager
         self.meshService = transport
+        self.additionalTransports = services.additionalTransports
         self.commandProcessor = services.commandProcessor
         self.messageRouter = services.messageRouter
         self.privateChatManager = services.privateChatManager

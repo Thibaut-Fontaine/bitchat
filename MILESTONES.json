@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "slug": "bitchat",
+  "generated_at": "2026-10-21T13:55:00.000000000Z",
+  "milestones": [
+    {
+      "id": "m1",
+      "title": "Foundation, protocol design and failing tests",
+      "description": "Write failing XCTest cases for the frame codec, the peer registry state machine and transport selection; define the LAN protocol, the LANPeer model, the feature flag and configuration keys; decide where the new code lives and how it is registered with the Xcode project.",
+      "todos": [
+        {
+          "text": "Write failing unit tests for the frame codec: round trip, malformed frame rejection, partial write, oversized frame",
+          "done": false
+        },
+        {
+          "text": "Write failing unit tests for the peer registry state machine: discovered to handshaking to authenticated to disconnected, plus timeout expiry",
+          "done": false
+        },
+        {
+          "text": "Write failing unit tests for transport selection: Wi-Fi over BLE over Nostr priority and fallback when the LAN permission is denied",
+          "done": false
+        },
+        {
+          "text": "Define the LAN transport protocol, the LANPeer model and the LAN feature flag and configuration keys",
+          "done": false
+        },
+        {
+          "text": "Decide and document where the new code lives (pure-Swift core plus Apple-framework shell) and how it is registered with the Xcode project",
+          "done": false
+        }
+      ],
+      "complexity": "medium",
+      "algorithmic_complexity": "O(1) per frame decode, O(n) peer table scan with n up to 32 concurrent peers",
+      "estimate_secs": 5700,
+      "status": "pending",
+      "actual_secs": 0,
+      "note": ""
+    },
+    {
+      "id": "m2",
+      "title": "Local-network discovery and encrypted session establishment",
+      "description": "Implement the frame codec and the read/write state machine over a byte stream with idle and handshake timeouts; implement NWBrowser discovery and NWListener accept; implement the Noise handshake over the LAN link; implement the peer registry and the peer snapshot publication.",
+      "todos": [
+        {
+          "text": "Implement the frame codec and the read/write state machine over a byte stream with idle and handshake timeouts",
+          "done": false
+        },
+        {
+          "text": "Implement NWBrowser discovery and NWListener accept, with a _bitchat._tcp service type and a configurable service name suffix",
+          "done": false
+        },
+        {
+          "text": "Implement the Noise handshake over the LAN link using the existing session and key material, including failure and timeout paths",
+          "done": false
+        },
+        {
+          "text": "Implement the peer registry and the peer snapshot publication from the LAN transport",
+          "done": false
+        },
+        {
+          "text": "Write and pass the unit tests with a mock link, and cover reconnection and duplicate-peer handling",
+          "done": false
+        }
+      ],
+      "complexity": "high",
+      "algorithmic_complexity": "O(1) per frame decode, O(n) peer table scan with n up to 32 concurrent peers",
+      "estimate_secs": 6900,
+      "status": "pending",
+      "actual_secs": 0,
+      "note": ""
+    },
+    {
+      "id": "m3",
+      "title": "Integration with the unified peer list and message routing",
+      "description": "Conform the LAN transport to the existing transport contract and the peer-events delegate; route public and private messages over the LAN link; integrate LAN peers into UnifiedPeerService; implement transport selection priority and fallback.",
+      "todos": [
+        {
+          "text": "Conform the LAN transport to the existing transport contract and the peer-events delegate, mapping every event to the existing typed transport events",
+          "done": false
+        },
+        {
+          "text": "Route public and private messages over the LAN link and deliver inbound messages into the existing MessageRouter path",
+          "done": false
+        },
+        {
+          "text": "Integrate LAN peers into UnifiedPeerService so they merge with BLE and Nostr peers by identity and appear in the existing peer list",
+          "done": false
+        },
+        {
+          "text": "Implement transport selection priority and fallback when the LAN link is down, denied or degraded",
+          "done": false
+        },
+        {
+          "text": "Run the existing test suite in CI and fix any regression without changing BLE behaviour",
+          "done": false
+        }
+      ],
+      "complexity": "high",
+      "algorithmic_complexity": "O(n) per send across the peer table, n up to 32 peers",
+      "estimate_secs": 6300,
+      "status": "pending",
+      "actual_secs": 0,
+      "note": ""
+    },
+    {
+      "id": "m4",
+      "title": "Feature flag, settings UI and Local Network permissions",
+      "description": "Add the settings toggle, the permission request on enable and the clear denied/unavailable states; add NSLocalNetworkUsageDescription and NSBonjourServices to the iOS and macOS Info.plist files and the macOS sandbox network entitlements; show LAN peers with their transport badge and the LAN state in the connectivity indicator.",
+      "todos": [
+        {
+          "text": "Add the settings toggle, the permission request on enable, and the clear denied/unavailable states",
+          "done": false
+        },
+        {
+          "text": "Add NSLocalNetworkUsageDescription and NSBonjourServices to the iOS and macOS Info.plist files and the macOS sandbox network entitlements",
+          "done": false
+        },
+        {
+          "text": "Show LAN peers in the peer list with their transport badge, and show the LAN state in the existing connectivity indicator",
+          "done": false
+        },
+        {
+          "text": "Implement the fallback UX when the permission is denied, when no LAN is reachable, and when only BLE peers are present",
+          "done": false
+        },
+        {
+          "text": "Add the pure-Swift unit tests for the flag, the permission state machine and the transport-selection fallbacks",
+          "done": false
+        }
+      ],
+      "complexity": "medium",
+      "algorithmic_complexity": "O(1)",
+      "estimate_secs": 5400,
+      "status": "pending",
+      "actual_secs": 0,
+      "note": ""
+    },
+    {
+      "id": "m5",
+      "title": "Documentation, CI validation and pull request",
+      "description": "Write docs/WIFI_TRANSPORT.md, push the feature branch and open a pull request, run the macOS CI and triage failures, update the repository conventions and produce the final honest report.",
+      "todos": [
+        {
+          "text": "Write docs/WIFI_TRANSPORT.md covering the wire format, the handshake, the permissions, the security limits and the unsupported features",
+          "done": false
+        },
+        {
+          "text": "Push the feature branch and open a pull request against the fork default branch with a clear description of what still needs a Mac",
+          "done": false
+        },
+        {
+          "text": "Run the macOS CI, triage the compile and test failures, and iterate until the suite is green",
+          "done": false
+        },
+        {
+          "text": "Update the repository AGENTS.md, CHECKS.md and MANUAL.md conventions if the transport adds new checks or commands",
+          "done": false
+        },
+        {
+          "text": "Produce the final honest report: what was verified in CI, what needs Xcode and a physical device, and what is explicitly out of scope",
+          "done": false
+        }
+      ],
+      "complexity": "medium",
+      "algorithmic_complexity": "O(1)",
+      "estimate_secs": 4800,
+      "status": "pending",
+      "actual_secs": 0,
+      "note": ""
+    }
+  ],
+  "events": [],
+  "prior_factor": 1.0
+}

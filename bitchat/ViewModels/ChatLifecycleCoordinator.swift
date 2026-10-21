@@ -99,6 +99,12 @@ extension ChatViewModel: ChatLifecycleContext {
 
     func stopMeshServices() {
         meshService.stopServices()
+        // The extra transports (Wi-Fi LAN) stop with the mesh service.
+        if let viewModel = context as? ChatViewModel {
+            for transport in viewModel.additionalTransports {
+                transport.stopServices()
+            }
+        }
     }
 
     func refreshBluetoothState() {
