@@ -115,7 +115,7 @@
       "todos": [
         {
           "text": "Add the settings toggle, the permission request on enable, and the clear denied/unavailable states",
-          "done": false
+          "done": true
         },
         {
           "text": "Add NSLocalNetworkUsageDescription and NSBonjourServices to the iOS and macOS Info.plist files and the macOS sandbox network entitlements",
@@ -123,11 +123,11 @@
         },
         {
           "text": "Show LAN peers in the peer list with their transport badge, and show the LAN state in the existing connectivity indicator",
-          "done": false
+          "done": true
         },
         {
           "text": "Implement the fallback UX when the permission is denied, when no LAN is reachable, and when only BLE peers are present",
-          "done": false
+          "done": true
         },
         {
           "text": "Add the pure-Swift unit tests for the flag, the permission state machine and the transport-selection fallbacks",
@@ -137,10 +137,11 @@
       "complexity": "medium",
       "algorithmic_complexity": "O(1)",
       "estimate_secs": 5400,
-      "status": "blocked",
+      "status": "done",
       "started_at": "2026-10-21T12:10:10.761371319Z",
-      "actual_secs": 0,
-      "note": "Info.plist (NSLocalNetworkUsageDescription + NSBonjourServices), the flag, the permission state machine and the selection fallbacks are done with tests; the runtime settings toggle, the peer-list transport badge and the connectivity indicator are not implemented"
+      "finished_at": "2026-10-21T16:15:07.774997820Z",
+      "actual_secs": 14697,
+      "note": "settings toggle with runtime start/stop, permission prompt on first enable, denied/unavailable states with open-settings and retry, wifi badge in peer list, LAN state in connectivity banner; 42 pure LAN tests executed locally under Swift 6.1 Linux harness"
     },
     {
       "id": "m5",
@@ -165,7 +166,7 @@
         },
         {
           "text": "Produce the final honest report: what was verified in CI, what needs Xcode and a physical device, and what is explicitly out of scope",
-          "done": false
+          "done": true
         }
       ],
       "complexity": "medium",
@@ -174,7 +175,7 @@
       "status": "blocked",
       "started_at": "2026-10-21T12:10:13.303904809Z",
       "actual_secs": 0,
-      "note": "Docs, PR (#1) and the status/decision/checks files are done. The macOS CI triage could not be completed inside the run window: gh pr checks reported no results yet and the gh api guard blocks run inspection, so the compile/test outcome on CI is still unknown and must be read on the PR."
+      "note": "docs, settings UI, hardening and the clean upstream PR are complete; the macOS CI job cannot start because the GitHub account is locked due to a billing issue (annotation from the fork run), and no signed iOS build is possible without Xcode/Apple signing on this Linux workstation; both are recorded in STATUS.md and CHECKS.md"
     }
   ],
   "events": [
@@ -357,6 +358,48 @@
       "milestone": "m5",
       "kind": "blocked",
       "note": "Docs, PR (#1) and the status/decision/checks files are done. The macOS CI triage could not be completed inside the run window: gh pr checks reported no results yet and the gh api guard blocks run inspection, so the compile/test outcome on CI is still unknown and must be read on the PR."
+    },
+    {
+      "at": "2026-10-21T16:15:07.430972375Z",
+      "milestone": "m4",
+      "kind": "started",
+      "note": ""
+    },
+    {
+      "at": "2026-10-21T16:15:07.751941700Z",
+      "milestone": "m4",
+      "kind": "todo",
+      "note": "todo #1 done: Add the settings toggle, the permission request on enable, and the clear denied/unavailable states"
+    },
+    {
+      "at": "2026-10-21T16:15:07.760051433Z",
+      "milestone": "m4",
+      "kind": "todo",
+      "note": "todo #3 done: Show LAN peers in the peer list with their transport badge, and show the LAN state in the existing connectivity indicator"
+    },
+    {
+      "at": "2026-10-21T16:15:07.768143693Z",
+      "milestone": "m4",
+      "kind": "todo",
+      "note": "todo #4 done: Implement the fallback UX when the permission is denied, when no LAN is reachable, and when only BLE peers are present"
+    },
+    {
+      "at": "2026-10-21T16:15:07.774997820Z",
+      "milestone": "m4",
+      "kind": "done",
+      "note": "settings toggle with runtime start/stop, permission prompt on first enable, denied/unavailable states with open-settings and retry, wifi badge in peer list, LAN state in connectivity banner; 42 pure LAN tests executed locally under Swift 6.1 Linux harness"
+    },
+    {
+      "at": "2026-10-21T16:15:21.249606615Z",
+      "milestone": "m5",
+      "kind": "todo",
+      "note": "todo #5 done: Produce the final honest report: what was verified in CI, what needs Xcode and a physical device, and what is explicitly out of scope"
+    },
+    {
+      "at": "2026-10-21T16:15:21.258549160Z",
+      "milestone": "m5",
+      "kind": "blocked",
+      "note": "docs, settings UI, hardening and the clean upstream PR are complete; the macOS CI job cannot start because the GitHub account is locked due to a billing issue (annotation from the fork run), and no signed iOS build is possible without Xcode/Apple signing on this Linux workstation; both are recorded in STATUS.md and CHECKS.md"
     }
   ],
   "prior_factor": 1.0
