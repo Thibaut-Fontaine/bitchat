@@ -873,8 +873,9 @@ final class LANTransport: Transport {
                 ttl: 1
             )
             guard let link = links.values.first(where: { $0.peerID == peerID }),
-                  link.connection.state == .ready else { return false }
-            link.connection.send(payload: packet.toBinaryData(padding: false) ?? Data())
+                  link.connection.state == .ready,
+                  let data = packet.toBinaryData(padding: false) else { return false }
+            link.connection.send(payload: data)
             return true
         } catch {
             SecureLogger.error("LAN transport: encrypt failed: \(error)", category: .security)
