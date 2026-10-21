@@ -644,7 +644,11 @@ final class LANTransport: Transport {
         // service is lying (or stale); do not let it create a second identity.
         if let advertised = link.peerID, advertised != senderID {
             SecureLogger.warning("LAN transport: hello does not match advertised peer; dropping", category: .security)
-            registry.remove(peerID: advertised)
+            // Do not evict a legitimate live peer that happens to share the
+            // advertised ID; only clean up this link's discovery hint.
+            if !links.values.contains(where: { $0 !== link && $0.peerID == advertised }) {
+                registry.remove(peerID: advertised)
+            }
             dropLink(link, notify: false)
             return
         }
