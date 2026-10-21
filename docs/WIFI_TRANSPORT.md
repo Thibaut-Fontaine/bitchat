@@ -16,9 +16,10 @@ A peer keeps **one identity** across transports: the LAN transport reuses
 the Noise static key from the keychain, so the peer ID and the fingerprint
 shown in the UI are the same as on BLE.
 
-> **Status.** The code is complete and reviewed, but this feature was written
-> on Linux, where no Swift toolchain, no Xcode and no Apple simulator exist.
-> It compiles and its unit tests run **only** in the macOS CI
+> **Status.** The code, the settings toggle, the peer-list badge and the
+> denied/unavailable states are implemented. This feature was written on
+> Linux, where no Swift toolchain, no Xcode and no Apple simulator exist, so
+> the compile and unit-test result comes from macOS CI
 > (`.github/workflows/swift-tests.yml`). A build on a Mac and a run on two
 > physical devices are still required — see [Verification](#verification).
 
@@ -37,6 +38,11 @@ sockets. Nothing in the BLE or Nostr path changes.
 `LANTransportSettings` wraps the flag so it can be exercised in tests against
 an isolated `UserDefaults` suite. `LANTransport.startServices()` returns
 immediately when the flag is off.
+
+The same flag is exposed in **Settings → connectivity → wi-fi direct**. It is a
+runtime switch: enabling starts discovery immediately, disabling cancels the
+listener, browser and every link. The first enable starts Bonjour, which is
+what makes iOS/macOS show the Local Network prompt.
 
 ## 2. Discovery
 
@@ -212,8 +218,11 @@ The permission state is tracked as `unknown` → `granted` / `denied` /
 permission, so the state is derived from the browser/listener state
 (`ready` → granted, a `posix` `EACCES`/`EPERM` failure → denied). The
 mapping is a pure function (`LANPermissionStateResolver`) and is unit
-tested. **A denied permission is not fatal**: the transport stays inert and
-BLE/Nostr keep working.
+tested. `unknown` is allowed to start on purpose: that first Bonjour call is
+what triggers the prompt. A known `denied` or `unavailable` state keeps the
+transport inert. **A denied permission is not fatal**: BLE/Nostr keep
+working and the Settings row shows the denial with an *open settings* and
+*try again* action.
 
 ## 7. Security limits
 
@@ -230,6 +239,18 @@ BLE/Nostr keep working.
   advertised Noise key, so a peer cannot claim another peer's identity.
 * A frame that is malformed or oversized drops the link; there is no
   resynchronisation and no partial-frame state.
+* Every packet must claim the peer ID that its TCP link authenticated as,
+  and every addressed packet must be addressed to us. A peer cannot inject a
+  packet under a third party's sender ID on its own link.
+* A public (`message`) packet is accepted only after the Noise handshake and
+  only after its Ed25519 signature verifies against the signing key from the
+  authenticated hello. The LAN path does not trust an unsigned public frame.
+* A link accepts exactly one hello. A second hello, or a hello whose sender
+  differs from the advertised Bonjour name, drops the link. When both peers
+  connect at once, a deterministic rule keeps one crossed link (the outbound
+  link of the smaller peer ID) so there is no duplicate session.
+* Unauthenticated connections are bounded (64 open links) and expire after
+  the discovery/handshake timeouts, so a local attacker cannot hold slots.
 * The transport has **no** key rotation of its own, no forward secrecy
   beyond what Noise XX provides, and no anti-replay window on the LAN link
   beyond the Noise message counters.
@@ -251,10 +272,9 @@ BLE/Nostr keep working.
   peer link only.
 * No IPv6-only or peer-to-peer (Wi-Fi Direct) special handling: the
   transport uses the interfaces Network.framework offers.
-* No runtime toggle in the settings UI yet: the flag is read at launch
-  (`bitchat.lan.enabled`). A settings switch that starts and stops the
-  transport at runtime is the obvious next step.
-* No peer-count or bandwidth limits beyond the 32-peer table cap.
+* No peer-count or traffic display specific to the LAN link beyond the wifi
+  badge in the peer list and the permission state in Settings.
+* No bandwidth limits beyond the 32-peer table and 64-link caps.
 
 ## 9. Code map
 
@@ -263,21 +283,23 @@ BLE/Nostr keep working.
 | `bitchat/Services/LAN/LANFrameCodec.swift` | length-prefixed framing, incremental decoder |
 | `bitchat/Services/LAN/LANPeerRegistry.swift` | peer state machine, snapshots |
 | `bitchat/Services/LAN/LANTransportSelector.swift` | transport selection policy |
+| `bitchat/Services/LAN/LANInboundPolicy.swift` | sender/recipient checks for inbound packets |
 | `bitchat/Services/LAN/LANTransportConfig.swift` | feature flag, permission state, constants |
 | `bitchat/Services/LAN/LANConnection.swift` | `NWConnection` wrapper with framing |
 | `bitchat/Services/LAN/LANTransport.swift` | discovery, hello, handshake, `Transport` conformance |
 | `bitchatTests/LANFrameCodecTests.swift` | codec: round trip, malformed, partial write, oversized |
 | `bitchatTests/LANPeerRegistryTests.swift` | state machine and timeouts |
 | `bitchatTests/LANTransportSelectorTests.swift` | priority and fallbacks |
-| `bitchatTests/LANTransportConfigTests.swift` | flag, service names, permission mapping |
+| `bitchatTests/LANTransportConfigTests.swift` | flag, service names, permission mapping, start gate |
+| `bitchatTests/LANInboundPolicyTests.swift` | sender and recipient identity checks |
 
 ## 10. Verification
 
-Executed on this change:
-
-* the macOS CI (`.github/workflows/swift-tests.yml`): `swift build
-  --build-tests`, the unit tests, the iOS simulator test job, the
-  SwiftLint job and the universal Release builds of both app targets.
+The macOS CI (`.github/workflows/swift-tests.yml`) is the executable gate:
+`swift build --build-tests`, the unit tests, the iOS simulator test job, the
+SwiftLint job and the universal Release builds of both app targets. Treat a
+CI run as the source of truth for this change; this document does not claim a
+local compile.
 
 **Not** executed here, because this workstation is Linux and the VPS is
 Linux (no Swift toolchain, no Xcode, no simulator):

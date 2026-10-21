@@ -34,3 +34,25 @@ enum LANInboundPolicy {
         senderMatches(packet, peerID: peerID) && recipientMatches(packet, localPeerID: localPeerID)
     }
 }
+
+/// Deterministic choice when both peers opened a connection to each other.
+///
+/// Both sides must keep the same physical link or both links are torn down.
+/// The smaller peer ID keeps its outbound link and the larger peer keeps its
+/// inbound link; equal directions fall back to the older connection.
+enum LANLinkArbitration {
+    static func shouldKeep(
+        existingIsOutbound: Bool,
+        incomingIsOutbound: Bool,
+        existingCreatedAt: Date,
+        incomingCreatedAt: Date,
+        localPeerID: PeerID,
+        remotePeerID: PeerID
+    ) -> Bool {
+        if existingIsOutbound != incomingIsOutbound {
+            let preferOutbound = localPeerID.id < remotePeerID.id
+            return existingIsOutbound == preferOutbound
+        }
+        return existingCreatedAt <= incomingCreatedAt
+    }
+}

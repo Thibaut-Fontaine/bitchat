@@ -73,4 +73,61 @@ struct LANInboundPolicyTests {
             )
         )
     }
+
+    @Test("Crossed links keep the outbound link of the smaller peer ID")
+    func crossedLinksAgree() {
+        let older = Date(timeIntervalSince1970: 10)
+        let newer = Date(timeIntervalSince1970: 20)
+
+        // The smaller peer keeps its outbound link: it keeps an existing
+        // outbound link and rejects an incoming one.
+        #expect(
+            LANLinkArbitration.shouldKeep(
+                existingIsOutbound: true,
+                incomingIsOutbound: false,
+                existingCreatedAt: older,
+                incomingCreatedAt: newer,
+                localPeerID: local,
+                remotePeerID: remote
+            )
+        )
+        // The larger peer keeps its inbound link, so it drops its own
+        // outbound connection to the smaller peer.
+        #expect(
+            !LANLinkArbitration.shouldKeep(
+                existingIsOutbound: true,
+                incomingIsOutbound: false,
+                existingCreatedAt: older,
+                incomingCreatedAt: newer,
+                localPeerID: remote,
+                remotePeerID: local
+            )
+        )
+    }
+
+    @Test("Two links in the same direction keep the older one")
+    func sameDirectionUsesAge() {
+        let older = Date(timeIntervalSince1970: 10)
+        let newer = Date(timeIntervalSince1970: 20)
+        #expect(
+            LANLinkArbitration.shouldKeep(
+                existingIsOutbound: true,
+                incomingIsOutbound: true,
+                existingCreatedAt: older,
+                incomingCreatedAt: newer,
+                localPeerID: local,
+                remotePeerID: remote
+            )
+        )
+        #expect(
+            !LANLinkArbitration.shouldKeep(
+                existingIsOutbound: true,
+                incomingIsOutbound: true,
+                existingCreatedAt: newer,
+                incomingCreatedAt: older,
+                localPeerID: local,
+                remotePeerID: remote
+            )
+        )
+    }
 }

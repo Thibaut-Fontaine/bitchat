@@ -658,11 +658,14 @@ final class LANTransport: Transport {
     }
 
     private func shouldKeep(existing: Link, incoming: Link, peerID: PeerID) -> Bool {
-        if existing.isOutbound != incoming.isOutbound {
-            let preferOutbound = localPeerID.id < peerID.id
-            return existing.isOutbound == preferOutbound
-        }
-        return existing.createdAt <= incoming.createdAt
+        LANLinkArbitration.shouldKeep(
+            existingIsOutbound: existing.isOutbound,
+            incomingIsOutbound: incoming.isOutbound,
+            existingCreatedAt: existing.createdAt,
+            incomingCreatedAt: incoming.createdAt,
+            localPeerID: localPeerID,
+            remotePeerID: peerID
+        )
     }
 
     private func dropLink(_ link: Link, notify: Bool) {
