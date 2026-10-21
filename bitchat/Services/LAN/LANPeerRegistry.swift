@@ -257,6 +257,11 @@ final class LANPeerRegistry {
         peers.removeValue(forKey: peerID)
     }
 
+    /// Forget every peer when the transport stops or is disabled.
+    func removeAll() {
+        peers.removeAll()
+    }
+
     /// Peer snapshots for the unified peer list.
     ///
     /// LAN peers are published with the same shape as BLE peers, so the

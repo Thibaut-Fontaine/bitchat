@@ -254,11 +254,12 @@ working and the Settings row shows the denial with an *open settings* and
 * The transport has **no** key rotation of its own, no forward secrecy
   beyond what Noise XX provides, and no anti-replay window on the LAN link
   beyond the Noise message counters.
-* The LAN transport does not take part in the panic wipe of the BLE mesh:
-  a panic rotates the Noise identity in the keychain, and the LAN
-  transport's in-memory copy of the identity becomes stale. `v1` therefore
-  does not run the LAN transport across a panic reset; a follow-up must
-  re-create the transport after a wipe.
+* A panic wipe stops and quarantines the LAN transport before the keychain
+  is erased: it owns an in-memory copy of the old Noise identity and may
+  hold live local-network links. The transport is not restarted in the same
+  session; a fresh app launch creates it under the new identity. A
+  follow-up should rebuild the transport in place instead of requiring a
+  relaunch.
 
 ## 8. Not supported in v1
 

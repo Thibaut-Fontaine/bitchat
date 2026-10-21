@@ -56,7 +56,7 @@ Last update: 2026-10-21 (feature branch `feature/wifi-lan-transport`).
 * **Tests.** `bitchatTests/LANFrameCodecTests.swift`,
   `LANPeerRegistryTests.swift`, `LANTransportSelectorTests.swift`,
   `LANTransportConfigTests.swift`, `LANInboundPolicyTests.swift`
-  (swift-testing, in the existing test target). **42 of these pure tests
+  (swift-testing, in the existing test target). **43 of these pure tests
   were executed with Swift 6.1 on Linux in a stubbed harness and pass.**
 
 ## What is untested / not verified here

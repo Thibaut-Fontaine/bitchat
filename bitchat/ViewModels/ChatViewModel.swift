@@ -1579,6 +1579,18 @@ final class ChatViewModel: ObservableObject, BitchatDelegate, SynchronousMessage
         } else {
             meshService.emergencyDisconnectAll()
         }
+        // The LAN transport owns an in-memory copy of the old Noise identity
+        // and can hold live local-network links. Tear it down before the
+        // keychain wipe; it is intentionally not restarted under the new
+        // identity in v1 (a fresh launch or a manual toggle is required).
+        for transport in additionalTransports {
+            if let lan = transport as? LANTransport {
+                lan.invalidateAfterPanic()
+            } else {
+                transport.emergencyDisconnectAll()
+                transport.stopServices()
+            }
+        }
 
         // Invalidate detached media preparation and close live capture file
         // handles before clearing state or removing the media directory.

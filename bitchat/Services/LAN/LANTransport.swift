@@ -88,6 +88,10 @@ final class LANTransport: Transport {
     private var browser: NWBrowser?
     private var links: [ObjectIdentifier: Link] = [:]
     private var isRunning = false
+    /// A panic wipe rotated the keychain identity under this instance; the
+    /// in-memory Noise service is stale and must not be started again until
+    /// the app creates a fresh transport on next launch.
+    private var identityInvalidated = false
     private var maintenanceTimer: DispatchSourceTimer?
     private var peerAuthenticatedHandler: ((PeerID, String) -> Void)?
     private var handshakeRequiredHandler: ((PeerID) -> Void)?
@@ -141,6 +145,14 @@ final class LANTransport: Transport {
     /// launch. Disabling tears every link down; enabling starts discovery and
     /// triggers the Local Network prompt on first use.
     func setEnabled(_ enabled: Bool) {
+        if enabled, queue.sync(execute: { identityInvalidated }) {
+            settings.isEnabled = false
+            SecureLogger.warning(
+                "LAN transport needs an app restart after a panic wipe; refusing to start",
+                category: .security
+            )
+            return
+        }
         settings.isEnabled = enabled
         queue.async { [weak self] in
             guard let self else { return }
@@ -149,6 +161,18 @@ final class LANTransport: Transport {
             } else {
                 self.stop()
             }
+        }
+    }
+
+    /// The keychain identity was rotated by a panic wipe. Tear down every
+    /// link and quarantine this instance; only a fresh app launch may rebuild
+    /// the Noise service under the new identity.
+    func invalidateAfterPanic() {
+        settings.isEnabled = false
+        queue.async { [weak self] in
+            guard let self else { return }
+            self.identityInvalidated = true
+            self.stop()
         }
     }
 
@@ -175,8 +199,8 @@ final class LANTransport: Transport {
     /// Nothing happens when the flag is off: no listener, no browser, no
     /// permission prompt.
     private func startIfAllowed() {
-        guard settings.isEnabled else {
-            SecureLogger.debug("LAN transport disabled by feature flag; staying inert", category: .session)
+        guard settings.isEnabled, !identityInvalidated else {
+            SecureLogger.debug("LAN transport disabled or awaiting restart; staying inert", category: .session)
             return
         }
         guard !isRunning else { return }
@@ -205,6 +229,8 @@ final class LANTransport: Transport {
         listener?.cancel()
         listener = nil
         teardownLinks()
+        registry.removeAll()
+        publishPeerSnapshots()
     }
 
     // MARK: - Transport: peers
