@@ -300,28 +300,30 @@ working and the Settings row shows the denial with an *open settings* and
 
 ## 10. Verification
 
-The macOS CI (`.github/workflows/swift-tests.yml`) is the executable gate:
-`swift build --build-tests`, the unit tests, the iOS simulator test job, the
-SwiftLint job and the universal Release builds of both app targets. Treat a
-CI run as the source of truth for this change; this document does not claim a
-local compile.
+The pure core (`LANFrameCodec`, `LANPeerRegistry`,
+`LANTransportSelector`, `LANTransportConfig`, `LANInboundPolicy`) was
+compiled with Swift 6.1 on Linux against small `BitFoundation` stubs, and
+**43 tests pass**. That harness is not part of this repository and does not
+cover UIKit, Network.framework or the app targets.
 
-**Not** executed here, because this workstation is Linux and the VPS is
-Linux (no Swift toolchain, no Xcode, no simulator):
+The macOS CI (`.github/workflows/swift-tests.yml`) is the executable gate for
+those parts: `swift build --build-tests`, the unit tests, the iOS simulator
+test job, the SwiftLint job and the universal Release builds of both app
+targets. It has not reported a result on this change yet.
 
-* a local `swift build` / `swift test`;
+**Not** executed here, because this workstation is Linux (no Xcode, no Apple
+simulator):
+
+* a build of the iOS/macOS app targets;
+* SwiftLint;
 * a run of the app on a Mac;
 * a run on two physical devices on the same Wi-Fi;
 * the iOS local-network permission prompt (denied, granted and "ask every
   time" paths).
 
-To verify on a Mac:
+To verify on a Mac, from a checkout of this pull request:
 
 ```bash
-git clone git@github.com:Thibaut-Fontaine/bitchat.git
-cd bitchat
-git switch feature/wifi-lan-transport
-
 # 1. unit tests
 swift test --filter LAN
 
