@@ -171,10 +171,10 @@
       "complexity": "medium",
       "algorithmic_complexity": "O(1)",
       "estimate_secs": 4800,
-      "status": "in-progress",
+      "status": "blocked",
       "started_at": "2026-10-21T12:10:13.303904809Z",
       "actual_secs": 0,
-      "note": ""
+      "note": "Docs, PR (#1) and the status/decision/checks files are done. The macOS CI triage could not be completed inside the run window: gh pr checks reported no results yet and the gh api guard blocks run inspection, so the compile/test outcome on CI is still unknown and must be read on the PR."
     }
   ],
   "events": [
@@ -351,6 +351,12 @@
       "milestone": "m5",
       "kind": "todo",
       "note": "todo #4 done: Update the repository AGENTS.md, CHECKS.md and MANUAL.md conventions if the transport adds new checks or commands"
+    },
+    {
+      "at": "2026-10-21T12:12:09.738172664Z",
+      "milestone": "m5",
+      "kind": "blocked",
+      "note": "Docs, PR (#1) and the status/decision/checks files are done. The macOS CI triage could not be completed inside the run window: gh pr checks reported no results yet and the gh api guard blocks run inspection, so the compile/test outcome on CI is still unknown and must be read on the PR."
     }
   ],
   "prior_factor": 1.0
