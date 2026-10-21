@@ -141,7 +141,7 @@
       "started_at": "2026-10-21T12:10:10.761371319Z",
       "finished_at": "2026-10-21T16:15:07.774997820Z",
       "actual_secs": 14697,
-      "note": "settings toggle with runtime start/stop, permission prompt on first enable, denied/unavailable states with open-settings and retry, wifi badge in peer list, LAN state in connectivity banner; 42 pure LAN tests executed locally under Swift 6.1 Linux harness"
+      "note": "settings toggle with runtime start/stop, permission prompt on first enable, denied/unavailable states with open-settings and retry, wifi badge in peer list, LAN state in connectivity banner; 43 pure LAN tests executed locally under Swift 6.1 Linux harness"
     },
     {
       "id": "m5",
@@ -387,7 +387,7 @@
       "at": "2026-10-21T16:15:07.774997820Z",
       "milestone": "m4",
       "kind": "done",
-      "note": "settings toggle with runtime start/stop, permission prompt on first enable, denied/unavailable states with open-settings and retry, wifi badge in peer list, LAN state in connectivity banner; 42 pure LAN tests executed locally under Swift 6.1 Linux harness"
+      "note": "settings toggle with runtime start/stop, permission prompt on first enable, denied/unavailable states with open-settings and retry, wifi badge in peer list, LAN state in connectivity banner; 43 pure LAN tests executed locally under Swift 6.1 Linux harness"
     },
     {
       "at": "2026-10-21T16:15:21.249606615Z",
